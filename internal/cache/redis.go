@@ -23,6 +23,7 @@ type Cache interface {
 	GetWalletReport(ctx context.Context, address string) (*entity.WalletReport, error)
 	SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error
 	GetPayment(ctx context.Context, guid string) (*entity.Payment, error)
+	AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error
 	Close() error
 }
 
@@ -106,6 +107,32 @@ func (c *RedisCache) GetPayment(ctx context.Context, guid string) (*entity.Payme
 
 	c.log.Debugf("Payment found in cache: %s, status: %s", guid, payment.Status)
 	return &payment, nil
+}
+
+// AddPayment - Добавляет информацию о платеже в Redis
+func (c *RedisCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error {
+	key := fmt.Sprintf("payment:%s", guid)
+
+	payment := &entity.Payment{
+		GUID:    guid,
+		Address: address,
+		Status:  status,
+	}
+
+	data, err := json.Marshal(payment)
+	if err != nil {
+		c.log.Errorf("Failed to marshal payment: %v", err)
+		return err
+	}
+
+	err = c.client.Set(ctx, key, string(data), CacheExpiration).Err()
+	if err != nil {
+		c.log.Errorf("Failed to set payment in cache: %v", err)
+		return err
+	}
+
+	c.log.Debugf("Payment added to cache: %s, status: %s", guid, status)
+	return nil
 }
 
 func (c *RedisCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error {

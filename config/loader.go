@@ -19,6 +19,7 @@ type Config struct {
 			Requests int  `yaml:"requests"`
 			Window   int  `yaml:"window_seconds"`
 		} `yaml:"rate_limit"`
+		BotApiUrl string `yaml:"bot_api_url"`
 	} `yaml:"app"`
 	GoPlus struct {
 		ApiKey    string `yaml:"key"`
@@ -99,6 +100,9 @@ func Load() (*Config, error) {
 		if err == nil {
 			config.Redis.DB = db
 		}
+	}
+	if botApiUrl := getEnv("BOT_API_URL", ""); botApiUrl != "" {
+		config.App.BotApiUrl = botApiUrl
 	}
 
 	return &config, nil

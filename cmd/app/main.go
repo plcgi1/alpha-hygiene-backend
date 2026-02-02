@@ -15,6 +15,7 @@ import (
 	"alpha-hygiene-backend/internal/aggregator"
 	"alpha-hygiene-backend/internal/cache"
 	"alpha-hygiene-backend/internal/checker"
+	"alpha-hygiene-backend/internal/handler/payment"
 	"alpha-hygiene-backend/internal/handler/wallet"
 	"alpha-hygiene-backend/internal/middleware"
 	"alpha-hygiene-backend/internal/provider"
@@ -125,6 +126,7 @@ func main() {
 	// Обработчики
 	r.GET("/health", healthCheckHandler(log))
 	r.POST("/api/check", middleware.PaymentCheckMiddleware(redisCache, log), wallet.CheckWalletHandler(aggregatorService, log))
+	r.POST("/api/payment/create-invoice", payment.CreateInvoiceHandler(redisCache, log, cfg.App.BotApiUrl))
 
 	// Запуск сервера
 	server := &http.Server{

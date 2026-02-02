@@ -6,6 +6,7 @@ app:
     enabled: true
     requests: 100
     window_seconds: 60
+  bot_api_url: "https://api.telegram.org/botYOUR_BOT_TOKEN"
 
 goplus:
   key: "USE-KEY-FROM-.env"

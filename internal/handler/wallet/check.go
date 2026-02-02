@@ -14,7 +14,7 @@ import (
 // CheckWalletRequest - Запрос на проверку кошелька
 type CheckWalletRequest struct {
 	Address string `json:"address" validate:"required,eth_addr" example:"0x0000db5c8B030ae20308ac975898E09741e70000"`
-	GUID    string `json:"guid" validate:"omitempty,uuid4" example:"123e4567-e89b-12d3-a456-426614174000"`
+	GUID    string `json:"guid" validate:"omitempty,uuid" example:"123e4567-e89b-12d3-a456-426614174000"`
 }
 
 // CheckWalletResponse - Ответ с результатом проверки кошелька
