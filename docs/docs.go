@@ -44,7 +44,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.CheckWalletRequest"
+                            "$ref": "#/definitions/wallet.CheckWalletRequest"
                         }
                     }
                 ],
@@ -52,7 +52,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.CheckWalletResponse"
+                            "$ref": "#/definitions/wallet.CheckWalletResponse"
                         }
                     },
                     "400": {
@@ -140,7 +140,7 @@ const docTemplate = `{
                 "RiskLevelCritical"
             ]
         },
-        "main.CheckWalletRequest": {
+        "wallet.CheckWalletRequest": {
             "type": "object",
             "required": [
                 "address"
@@ -149,10 +149,14 @@ const docTemplate = `{
                 "address": {
                     "type": "string",
                     "example": "0x0000db5c8B030ae20308ac975898E09741e70000"
+                },
+                "guid": {
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
                 }
             }
         },
-        "main.CheckWalletResponse": {
+        "wallet.CheckWalletResponse": {
             "type": "object",
             "properties": {
                 "address": {

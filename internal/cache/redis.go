@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"alpha-hygiene-backend/config"
@@ -21,6 +22,7 @@ const (
 type Cache interface {
 	GetWalletReport(ctx context.Context, address string) (*entity.WalletReport, error)
 	SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error
+	GetPayment(ctx context.Context, guid string) (*entity.Payment, error)
 	Close() error
 }
 
@@ -82,6 +84,30 @@ func (c *RedisCache) GetWalletReport(ctx context.Context, address string) (*enti
 }
 
 // SetWalletReport - Сохраняет отчет о кошельке в кэш
+// GetPayment - Получает информацию о платеже из Redis по GUID
+func (c *RedisCache) GetPayment(ctx context.Context, guid string) (*entity.Payment, error) {
+	key := fmt.Sprintf("payment:%s", guid)
+
+	val, err := c.client.Get(ctx, key).Result()
+	if err == redis.Nil {
+		c.log.Debugf("Payment not found in cache: %s", guid)
+		return nil, nil
+	} else if err != nil {
+		c.log.Errorf("Failed to get payment from cache: %v", err)
+		return nil, err
+	}
+
+	var payment entity.Payment
+	err = json.Unmarshal([]byte(val), &payment)
+	if err != nil {
+		c.log.Errorf("Failed to unmarshal payment: %v", err)
+		return nil, err
+	}
+
+	c.log.Debugf("Payment found in cache: %s, status: %s", guid, payment.Status)
+	return &payment, nil
+}
+
 func (c *RedisCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error {
 	key := c.getCacheKey(address)
 

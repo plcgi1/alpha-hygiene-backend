@@ -26,15 +26,18 @@ definitions:
     - RiskLevelMedium
     - RiskLevelHigh
     - RiskLevelCritical
-  main.CheckWalletRequest:
+  wallet.CheckWalletRequest:
     properties:
       address:
         example: 0x0000db5c8B030ae20308ac975898E09741e70000
         type: string
+      guid:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
     required:
     - address
     type: object
-  main.CheckWalletResponse:
+  wallet.CheckWalletResponse:
     properties:
       address:
         type: string
@@ -76,14 +79,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/main.CheckWalletRequest'
+          $ref: '#/definitions/wallet.CheckWalletRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.CheckWalletResponse'
+            $ref: '#/definitions/wallet.CheckWalletResponse'
         "400":
           description: Bad Request
           schema:

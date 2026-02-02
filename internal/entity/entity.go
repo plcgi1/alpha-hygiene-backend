@@ -60,3 +60,19 @@ type ApprovalInfo struct {
 	IsUnlimited     bool    `json:"is_unlimited"`
 	IsMalicious     bool    `json:"is_malicious"`
 }
+
+// PaymentStatus - Статус платежа
+type PaymentStatus string
+
+const (
+	PaymentStatusPending  PaymentStatus = "pending"
+	PaymentStatusPaid     PaymentStatus = "paid"
+	PaymentStatusCanceled PaymentStatus = "canceled"
+)
+
+// Payment - Информация о платеже
+type Payment struct {
+	GUID    string        `json:"guid"`
+	Status  PaymentStatus `json:"status"`
+	Address string        `json:"address"`
+}
