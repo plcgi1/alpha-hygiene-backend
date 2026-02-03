@@ -76,6 +76,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/payment-status/{guid}": {
+            "get": {
+                "description": "Get payment status by GUID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payment"
+                ],
+                "summary": "Get payment status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Payment GUID",
+                        "name": "guid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/payment.PaymentStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/payment/create-invoice": {
             "post": {
                 "description": "Create a payment invoice for wallet check activation",
@@ -229,6 +288,19 @@ const docTemplate = `{
                 }
             }
         },
+        "entity.PaymentStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "paid",
+                "canceled"
+            ],
+            "x-enum-varnames": [
+                "PaymentStatusPending",
+                "PaymentStatusPaid",
+                "PaymentStatusCanceled"
+            ]
+        },
         "entity.RiskLevel": {
             "type": "string",
             "enum": [
@@ -247,26 +319,38 @@ const docTemplate = `{
         "payment.CreateInvoiceRequest": {
             "type": "object",
             "required": [
-                "address",
-                "guid"
+                "address"
             ],
             "properties": {
                 "address": {
                     "type": "string",
                     "example": "0x0000db5c8B030ae20308ac975898E09741e70000"
-                },
-                "guid": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         },
         "payment.CreateInvoiceResponse": {
             "type": "object",
             "properties": {
+                "guid": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
                 "order_url": {
                     "type": "string",
                     "example": "https://t.me/pay?hash=1234567890abcdef"
+                }
+            }
+        },
+        "payment.PaymentStatusResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/entity.PaymentStatus"
+                        }
+                    ],
+                    "example": "pending"
                 }
             }
         },

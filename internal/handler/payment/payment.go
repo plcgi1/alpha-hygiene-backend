@@ -12,18 +12,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
 // CreateInvoiceRequest - Запрос на создание инвойса
 type CreateInvoiceRequest struct {
-	GUID    string `json:"guid" validate:"required,uuid" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Address string `json:"address" validate:"required,eth_addr" example:"0x0000db5c8B030ae20308ac975898E09741e70000"`
 }
 
 // CreateInvoiceResponse - Ответ с ссылкой на инвойс
 type CreateInvoiceResponse struct {
 	OrderURL string `json:"order_url" example:"https://t.me/pay?hash=1234567890abcdef"`
+	GUID     string `json:"guid" example:"550e8400-e29b-41d4-a716-446655440000"`
 }
 
 // CreateInvoiceHandler - Обработчик создания инвойса
@@ -68,17 +69,18 @@ func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Con
 			})
 			return
 		}
+		uuidV4 := uuid.New().String()
 
 		// Создание инвойса через Telegram Bot API
-		orderUrl, err := createTelegramInvoice(cfg.Telegram.BotToken, req.GUID)
+		orderUrl, err := createTelegramInvoice(cfg.Telegram.BotToken, uuidV4)
 		if err != nil {
 			log.Errorf("Failed to create Telegram invoice: %v", err)
 			// В случае ошибки используем мок-ответ
-			orderUrl = "https://t.me/pay?hash=mock_hash_" + req.GUID
+			orderUrl = "https://t.me/pay?hash=mock_hash_" + uuidV4
 		}
 
 		// Сохранение информации о платеже в Redis
-		if err := cache.AddPayment(c.Request.Context(), req.GUID, req.Address, entity.PaymentStatusPending, cfg.TTL.Payment); err != nil {
+		if err := cache.AddPayment(c.Request.Context(), uuidV4, req.Address, entity.PaymentStatusPending, cfg.TTL.Payment); err != nil {
 			log.Errorf("Failed to add payment to cache: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to create invoice",
@@ -89,6 +91,61 @@ func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Con
 		// Возврат ответа с ссылкой на инвойс
 		c.JSON(http.StatusOK, CreateInvoiceResponse{
 			OrderURL: orderUrl,
+			GUID:     uuidV4,
+		})
+	}
+}
+
+// PaymentStatusResponse - Ответ с статусом платежа
+type PaymentStatusResponse struct {
+	Status entity.PaymentStatus `json:"status" example:"pending"`
+}
+
+// GetPaymentStatusHandler - Обработчик получения статуса платежа
+// @Summary Get payment status
+// @Description Get payment status by GUID
+// @Tags payment
+// @Accept  json
+// @Produce  json
+// @Param guid path string true "Payment GUID" example:"550e8400-e29b-41d4-a716-446655440000"
+// @Success 200 {object} PaymentStatusResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/payment-status/{guid} [get]
+func GetPaymentStatusHandler(cache cache.Cache, log *logrus.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		guid := c.Param("GUID")
+
+		// Валидация формата GUID
+		if _, err := uuid.Parse(guid); err != nil {
+			log.Errorf("Invalid GUID format: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "invalid GUID format",
+			})
+			return
+		}
+
+		// Получаем информацию о платеже из кэша
+		payment, err := cache.GetPayment(c.Request.Context(), guid)
+		if err != nil {
+			log.Errorf("Failed to get payment from cache: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "internal server error",
+			})
+			return
+		}
+
+		if payment == nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "payment not found",
+			})
+			return
+		}
+
+		// Возвращаем статус платежа
+		c.JSON(http.StatusOK, PaymentStatusResponse{
+			Status: payment.Status,
 		})
 	}
 }

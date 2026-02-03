@@ -14,6 +14,16 @@ definitions:
       score_penalty:
         type: number
     type: object
+  entity.PaymentStatus:
+    enum:
+    - pending
+    - paid
+    - canceled
+    type: string
+    x-enum-varnames:
+    - PaymentStatusPending
+    - PaymentStatusPaid
+    - PaymentStatusCanceled
   entity.RiskLevel:
     enum:
     - LOW
@@ -31,18 +41,24 @@ definitions:
       address:
         example: 0x0000db5c8B030ae20308ac975898E09741e70000
         type: string
-      guid:
-        example: 550e8400-e29b-41d4-a716-446655440000
-        type: string
     required:
     - address
-    - guid
     type: object
   payment.CreateInvoiceResponse:
     properties:
+      guid:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
       order_url:
         example: https://t.me/pay?hash=1234567890abcdef
         type: string
+    type: object
+  payment.PaymentStatusResponse:
+    properties:
+      status:
+        allOf:
+        - $ref: '#/definitions/entity.PaymentStatus'
+        example: pending
     type: object
   payment.WebhookRequest:
     properties:
@@ -167,6 +183,45 @@ paths:
       summary: Check wallet security
       tags:
       - wallet
+  /api/payment-status/{guid}:
+    get:
+      consumes:
+      - application/json
+      description: Get payment status by GUID
+      parameters:
+      - description: Payment GUID
+        in: path
+        name: guid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/payment.PaymentStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get payment status
+      tags:
+      - payment
   /api/payment/create-invoice:
     post:
       consumes:

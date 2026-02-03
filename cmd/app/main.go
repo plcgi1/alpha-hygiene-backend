@@ -134,6 +134,10 @@ func main() {
 		middleware.TelegramWebhookMiddleware(cfg, log),
 		payment.WebhookHandler(redisCache, log, cfg),
 	)
+	r.GET(
+		"/api/payment-status/:GUID",
+		payment.GetPaymentStatusHandler(redisCache, log),
+	)
 
 	// Запуск сервера
 	server := &http.Server{
