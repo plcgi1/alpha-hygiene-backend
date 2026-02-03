@@ -129,6 +129,10 @@ func main() {
 		"/api/payment/create-invoice",
 		payment.CreateInvoiceHandler(redisCache, log, cfg),
 	)
+	r.POST(
+		"/api/payment/webhook",
+		payment.WebhookHandler(redisCache, log, cfg),
+	)
 
 	// Запуск сервера
 	server := &http.Server{

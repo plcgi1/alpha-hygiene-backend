@@ -109,16 +109,34 @@ func (c *RedisCache) GetPayment(ctx context.Context, guid string) (*entity.Payme
 	return &payment, nil
 }
 
-// AddPayment - Добавляет информацию о платеже в Redis
+// AddPayment - Добавляет или обновляет информацию о платеже в Redis
 func (c *RedisCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error {
 	key := fmt.Sprintf("payment:%s", guid)
 
-	now := time.Now()
-	payment := &entity.Payment{
-		GUID:      guid,
-		Address:   address,
-		Status:    status,
-		CreatedAt: now,
+	// Проверяем, есть ли уже платеж с таким GUID
+	existingPayment, err := c.GetPayment(ctx, guid)
+	if err != nil {
+		c.log.Errorf("Failed to check existing payment: %v", err)
+		return err
+	}
+
+	var payment *entity.Payment
+	if existingPayment != nil {
+		// Обновляем существующий платеж
+		payment = existingPayment
+		if address != "" {
+			payment.Address = address
+		}
+		payment.Status = status
+	} else {
+		// Создаем новый платеж
+		now := time.Now()
+		payment = &entity.Payment{
+			GUID:      guid,
+			Address:   address,
+			Status:    status,
+			CreatedAt: now,
+		}
 	}
 
 	data, err := json.Marshal(payment)
@@ -133,7 +151,12 @@ func (c *RedisCache) AddPayment(ctx context.Context, guid string, address string
 		return err
 	}
 
-	c.log.Debugf("Payment added to cache: %s, status: %s", guid, status)
+	c.log.Debugf("Payment %s in cache: %s, status: %s", func() string {
+		if existingPayment != nil {
+			return "updated"
+		}
+		return "added"
+	}(), guid, status)
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
@@ -24,6 +25,7 @@ type Config struct {
 	Telegram struct {
 		BotToken         string `yaml:"bot_token"`
 		WebhookApiSecret string `yaml:"webhook_secret"`
+		OneTimePrice     int64  `yaml:"one_time_price"`
 	} `yaml:"telegram"`
 
 	GoPlus struct {
@@ -110,8 +112,11 @@ func Load() (*Config, error) {
 	if botToken := getEnv("TELEGRAM_BOT_KEY", ""); botToken != "" {
 		config.Telegram.BotToken = botToken
 	}
-	if webhookApiSecret := getEnv("WEBHOOK_API_SECRET", ""); webhookApiSecret != "" {
-		config.Telegram.WebhookApiSecret = webhookApiSecret
+	if oneTimePrice := getEnv("ONE_TIME_PRICE", ""); oneTimePrice != "" {
+		price, err := strconv.ParseInt(oneTimePrice, 10, 64)
+		if err == nil {
+			config.Telegram.OneTimePrice = price
+		}
 	}
 
 	return &config, nil

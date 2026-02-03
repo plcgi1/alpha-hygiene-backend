@@ -122,6 +122,58 @@
                 }
             }
         },
+        "/api/payment/webhook": {
+            "post": {
+                "description": "Handle payment notifications from Telegram",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payment"
+                ],
+                "summary": "Handle Telegram webhook",
+                "parameters": [
+                    {
+                        "description": "Webhook data from Telegram",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/payment.WebhookRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/payment.WebhookResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Check if the service is running",
@@ -209,6 +261,80 @@
                 "order_url": {
                     "type": "string",
                     "example": "https://t.me/pay?hash=1234567890abcdef"
+                }
+            }
+        },
+        "payment.WebhookRequest": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "object",
+                    "properties": {
+                        "chat": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "date": {
+                            "type": "integer"
+                        },
+                        "from": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "message_id": {
+                            "type": "integer"
+                        },
+                        "pre_checkout_query": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "successful_payment": {
+                            "type": "object",
+                            "properties": {
+                                "currency": {
+                                    "type": "string"
+                                },
+                                "invoice_payload": {
+                                    "type": "string"
+                                },
+                                "provider_payment_charge_id": {
+                                    "type": "string"
+                                },
+                                "telegram_payment_charge_id": {
+                                    "type": "string"
+                                },
+                                "total_amount": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "update_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "payment.WebhookResponse": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
                 }
             }
         },

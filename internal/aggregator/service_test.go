@@ -43,13 +43,15 @@ func TestCheckWallet(t *testing.T) {
 				Window:   60,
 			},
 		},
-		Telegram: struct {
-			BotToken         string `yaml:"bot_token"`
-			WebhookApiSecret string `yaml:"webhook_secret"`
-		}{
-			BotToken:         "test_token",
-			WebhookApiSecret: "test_secret",
-		},
+		// Telegram: struct {
+		// 	BotToken         string `yaml:"bot_token"`
+		// 	OneTimePrice     int64  `yaml:"one_time_price"`
+		// 	WebhookApiSecret string `yaml:"webhook_secret"`
+		// }{
+		// 	BotToken:         "test_token",
+		// 	OneTimePrice:     300,
+		// 	WebhookApiSecret: "test_secret",
+		// },
 		Scoring: struct {
 			BaseScore float64            `yaml:"base_score"`
 			Weights   map[string]float64 `yaml:"weights"`

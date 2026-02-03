@@ -44,6 +44,53 @@ definitions:
         example: https://t.me/pay?hash=1234567890abcdef
         type: string
     type: object
+  payment.WebhookRequest:
+    properties:
+      message:
+        properties:
+          chat:
+            properties:
+              id:
+                type: integer
+              type:
+                type: string
+            type: object
+          date:
+            type: integer
+          from:
+            properties:
+              id:
+                type: integer
+            type: object
+          message_id:
+            type: integer
+          pre_checkout_query:
+            properties:
+              id:
+                type: string
+            type: object
+          successful_payment:
+            properties:
+              currency:
+                type: string
+              invoice_payload:
+                type: string
+              provider_payment_charge_id:
+                type: string
+              telegram_payment_charge_id:
+                type: string
+              total_amount:
+                type: integer
+            type: object
+        type: object
+      update_id:
+        type: integer
+    type: object
+  payment.WebhookResponse:
+    properties:
+      ok:
+        type: boolean
+    type: object
   wallet.CheckWalletRequest:
     properties:
       address:
@@ -152,6 +199,40 @@ paths:
               type: string
             type: object
       summary: Create payment invoice
+      tags:
+      - payment
+  /api/payment/webhook:
+    post:
+      consumes:
+      - application/json
+      description: Handle payment notifications from Telegram
+      parameters:
+      - description: Webhook data from Telegram
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/payment.WebhookRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/payment.WebhookResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Handle Telegram webhook
       tags:
       - payment
   /health:
