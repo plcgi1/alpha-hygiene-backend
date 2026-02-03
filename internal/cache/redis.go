@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"alpha-hygiene-backend/config"
@@ -21,6 +22,8 @@ const (
 type Cache interface {
 	GetWalletReport(ctx context.Context, address string) (*entity.WalletReport, error)
 	SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error
+	GetPayment(ctx context.Context, guid string) (*entity.Payment, error)
+	AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error
 	Close() error
 }
 
@@ -82,6 +85,58 @@ func (c *RedisCache) GetWalletReport(ctx context.Context, address string) (*enti
 }
 
 // SetWalletReport - Сохраняет отчет о кошельке в кэш
+// GetPayment - Получает информацию о платеже из Redis по GUID
+func (c *RedisCache) GetPayment(ctx context.Context, guid string) (*entity.Payment, error) {
+	key := fmt.Sprintf("payment:%s", guid)
+
+	val, err := c.client.Get(ctx, key).Result()
+	if err == redis.Nil {
+		c.log.Debugf("Payment not found in cache: %s", guid)
+		return nil, nil
+	} else if err != nil {
+		c.log.Errorf("Failed to get payment from cache: %v", err)
+		return nil, err
+	}
+
+	var payment entity.Payment
+	err = json.Unmarshal([]byte(val), &payment)
+	if err != nil {
+		c.log.Errorf("Failed to unmarshal payment: %v", err)
+		return nil, err
+	}
+
+	c.log.Debugf("Payment found in cache: %s, status: %s", guid, payment.Status)
+	return &payment, nil
+}
+
+// AddPayment - Добавляет информацию о платеже в Redis
+func (c *RedisCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error {
+	key := fmt.Sprintf("payment:%s", guid)
+
+	now := time.Now()
+	payment := &entity.Payment{
+		GUID:      guid,
+		Address:   address,
+		Status:    status,
+		CreatedAt: now,
+	}
+
+	data, err := json.Marshal(payment)
+	if err != nil {
+		c.log.Errorf("Failed to marshal payment: %v", err)
+		return err
+	}
+
+	err = c.client.Set(ctx, key, string(data), CacheExpiration).Err()
+	if err != nil {
+		c.log.Errorf("Failed to set payment in cache: %v", err)
+		return err
+	}
+
+	c.log.Debugf("Payment added to cache: %s, status: %s", guid, status)
+	return nil
+}
+
 func (c *RedisCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error {
 	key := c.getCacheKey(address)
 

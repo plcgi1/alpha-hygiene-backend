@@ -2,9 +2,7 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -17,22 +15,22 @@ import (
 
 // GoPlusClient - Клиент для GoPlus Security API
 type GoPlusClient struct {
+	*BaseClient
 	apiKey    string
 	apiSecret string
-	client    *http.Client
-	log       *logrus.Entry
 }
 
 // NewGoPlusClient - Создает новый клиент GoPlus
 func NewGoPlusClient(cfg *config.Config, log *logrus.Entry) *GoPlusClient {
-	logger := log.WithFields(logrus.Fields{"component": "goplus"})
+	timeout := time.Duration(cfg.App.TimeoutSec) * time.Second
+	if cfg.App.TimeoutSec <= 0 {
+		timeout = 10 * time.Second // Default timeout
+	}
+	base := NewBaseClient(timeout, log, "goplus")
 	return &GoPlusClient{
-		apiKey:    cfg.GoPlus.ApiKey,
-		apiSecret: cfg.GoPlus.ApiSecret,
-		client: &http.Client{
-			Timeout: time.Duration(cfg.App.TimeoutSec) * time.Second,
-		},
-		log: logger,
+		BaseClient: base,
+		apiKey:     cfg.GoPlus.ApiKey,
+		apiSecret:  cfg.GoPlus.ApiSecret,
 	}
 }
 
@@ -123,20 +121,8 @@ func (c *GoPlusClient) GetTokenApprovals(ctx context.Context, address string) (*
 
 	req.Header.Set("API-Key", c.apiKey)
 
-	resp, err := c.client.Do(req)
-
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	var result TokenApprovalResponse
-	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+	if err := c.DoRequest(ctx, req, &result); err != nil {
 		return nil, err
 	}
 
@@ -158,14 +144,8 @@ func (c *GoPlusClient) GetTokenSecurity(ctx context.Context, tokenAddresses []st
 	req.Header.Set("API-Key", c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
 	var result TokenSecurityResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := c.DoRequest(ctx, req, &result); err != nil {
 		return nil, err
 	}
 

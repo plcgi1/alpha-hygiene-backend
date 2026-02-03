@@ -44,7 +44,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.CheckWalletRequest"
+                            "$ref": "#/definitions/wallet.CheckWalletRequest"
                         }
                     }
                 ],
@@ -52,7 +52,59 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.CheckWalletResponse"
+                            "$ref": "#/definitions/wallet.CheckWalletResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/payment/create-invoice": {
+            "post": {
+                "description": "Create a payment invoice for wallet check activation",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payment"
+                ],
+                "summary": "Create payment invoice",
+                "parameters": [
+                    {
+                        "description": "Payment details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/payment.CreateInvoiceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/payment.CreateInvoiceResponse"
                         }
                     },
                     "400": {
@@ -140,7 +192,33 @@ const docTemplate = `{
                 "RiskLevelCritical"
             ]
         },
-        "main.CheckWalletRequest": {
+        "payment.CreateInvoiceRequest": {
+            "type": "object",
+            "required": [
+                "address",
+                "guid"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "0x0000db5c8B030ae20308ac975898E09741e70000"
+                },
+                "guid": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "payment.CreateInvoiceResponse": {
+            "type": "object",
+            "properties": {
+                "order_url": {
+                    "type": "string",
+                    "example": "https://t.me/pay?hash=1234567890abcdef"
+                }
+            }
+        },
+        "wallet.CheckWalletRequest": {
             "type": "object",
             "required": [
                 "address"
@@ -149,10 +227,14 @@ const docTemplate = `{
                 "address": {
                     "type": "string",
                     "example": "0x0000db5c8B030ae20308ac975898E09741e70000"
+                },
+                "guid": {
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
                 }
             }
         },
-        "main.CheckWalletResponse": {
+        "wallet.CheckWalletResponse": {
             "type": "object",
             "properties": {
                 "address": {

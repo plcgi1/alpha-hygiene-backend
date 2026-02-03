@@ -43,6 +43,13 @@ func TestCheckWallet(t *testing.T) {
 				Window:   60,
 			},
 		},
+		Telegram: struct {
+			BotToken         string `yaml:"bot_token"`
+			WebhookApiSecret string `yaml:"webhook_secret"`
+		}{
+			BotToken:         "test_token",
+			WebhookApiSecret: "test_secret",
+		},
 		Scoring: struct {
 			BaseScore float64            `yaml:"base_score"`
 			Weights   map[string]float64 `yaml:"weights"`
@@ -70,7 +77,7 @@ func TestCheckWallet(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	report, err := service.CheckWallet(ctx, "0x742d35Cc6634C0532925a3b88650D7241EfF5cbc")
+	report, err := service.CheckWallet(ctx, "0x742d35Cc6634C0532925a3b88650D7241EfF5cbc", true)
 
 	// Проверяем результаты
 	assert.NoError(t, err)
@@ -91,6 +98,14 @@ func (m *mockCache) GetWalletReport(ctx context.Context, address string) (*entit
 }
 
 func (m *mockCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error {
+	return nil
+}
+
+func (m *mockCache) GetPayment(ctx context.Context, guid string) (*entity.Payment, error) {
+	return nil, nil
+}
+
+func (m *mockCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error {
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"alpha-hygiene-backend/config"
 	"context"
 	"fmt"
 	"math/big"
@@ -18,11 +19,17 @@ type MulticallClient struct {
 	client        *ethclient.Client
 	multicallAddr common.Address
 	contractABI   abi.ABI
-	log           *logrus.Logger
+	log           *logrus.Entry
 }
 
 // NewMulticallClient - Создает новый клиент для Multicall контракта
-func NewMulticallClient(rpcURL string, log *logrus.Logger) (*MulticallClient, error) {
+func NewMulticallClient(cfg *config.Config, log *logrus.Entry) (*MulticallClient, error) {
+	// Use RPC URL from config or default to Alchemy
+	rpcURL := cfg.Alchemy.URL
+	if rpcURL == "" {
+		rpcURL = "https://eth-mainnet.g.alchemy.com/v2/" + cfg.Alchemy.ApiKey
+	}
+
 	client, err := ethclient.Dial(rpcURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to RPC: %w", err)
@@ -72,7 +79,7 @@ func NewMulticallClient(rpcURL string, log *logrus.Logger) (*MulticallClient, er
 		return nil, fmt.Errorf("failed to parse contract ABI: %w", err)
 	}
 
-	logger := log.WithFields(logrus.Fields{"component": "multicall"}).Logger
+	logger := log.WithFields(logrus.Fields{"component": "multicall"})
 	logger.Info("Successfully connected to Multicall contract")
 
 	return &MulticallClient{

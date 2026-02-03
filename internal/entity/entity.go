@@ -1,5 +1,7 @@
 package entity
 
+import "time"
+
 // Language - Язык для отчета
 type Language string
 
@@ -59,4 +61,26 @@ type ApprovalInfo struct {
 	ExposureBalance float64 `json:"exposure_balance"`
 	IsUnlimited     bool    `json:"is_unlimited"`
 	IsMalicious     bool    `json:"is_malicious"`
+}
+
+// PaymentStatus - Статус платежа
+type PaymentStatus string
+
+const (
+	PaymentStatusPending  PaymentStatus = "pending"
+	PaymentStatusPaid     PaymentStatus = "paid"
+	PaymentStatusCanceled PaymentStatus = "canceled"
+)
+
+// Payment - Информация о платеже
+type Payment struct {
+	GUID      string        `json:"guid"`
+	Status    PaymentStatus `json:"status"`
+	Address   string        `json:"address"`
+	CreatedAt time.Time     `json:"createdAt"`
+}
+
+type CheckRequest struct {
+	GUID    string `json:"guid" binding:"omitempty"`
+	Address string `json:"address" binding:"omitempty"`
 }

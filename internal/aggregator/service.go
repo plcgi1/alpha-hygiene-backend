@@ -38,15 +38,19 @@ func NewService(cfg *config.Config, factory CheckFactory, cache cache.Cache, log
 }
 
 // CheckWallet - Проверяет безопасность кошелька
-func (s *Service) CheckWallet(ctx context.Context, address string) (*entity.WalletReport, error) {
+func (s *Service) CheckWallet(ctx context.Context, address string, hasValidPayment bool) (*entity.WalletReport, error) {
 	// Создаем основной контекст с таймаутом. Увеличиваем для AI сервиса.
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute) // 5 минут для работы с AI
 	defer cancel()
 	// Проверяем кэш
 	if s.cache != nil {
 		cachedReport, err := s.cache.GetWalletReport(ctxWithTimeout, address)
+
 		if err != nil {
 			s.log.Errorf("Failed to get cached report: %v", err)
+		}
+		if !hasValidPayment {
+			cachedReport = lightReport(cachedReport)
 		}
 		if cachedReport != nil {
 			s.log.Debugf("Returning cached report for address: %s", address)
@@ -133,6 +137,9 @@ func (s *Service) CheckWallet(ctx context.Context, address string) (*entity.Wall
 			s.log.Errorf("Failed to cache report: %v", err)
 		}
 	}
+	if !hasValidPayment {
+		report = lightReport(report)
+	}
 
 	return report, nil
 }
@@ -152,4 +159,14 @@ func (s *Service) calculateScore(results []*entity.CheckResult) float64 {
 	}
 
 	return score
+}
+
+func lightReport(report *entity.WalletReport) *entity.WalletReport {
+	if report == nil {
+		return nil
+	}
+	for i := range report.Checks {
+		report.Checks[i].RawData = nil
+	}
+	return report
 }

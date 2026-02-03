@@ -6,6 +6,12 @@ app:
     enabled: true
     requests: 100
     window_seconds: 60
+  
+
+telegram:
+  bot_api_url: "USE-SECRET-FROM-.env"
+  bot_token: "TELEGRAM_BOT_KEY-FROM-.env"
+  webhook_secret: "USE-SECRET-FROM-.env"
 
 goplus:
   key: "USE-KEY-FROM-.env"

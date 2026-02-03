@@ -2,9 +2,7 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -17,10 +15,9 @@ import (
 
 // EtherscanClient - Клиент для Etherscan API
 type EtherscanClient struct {
+	*BaseClient
 	apiKey  string
 	baseURL string
-	client  *http.Client
-	log     *logrus.Entry
 }
 
 // NewEtherscanClient - Создает новый клиент Etherscan
@@ -29,14 +26,15 @@ func NewEtherscanClient(cfg *config.Config, log *logrus.Entry) *EtherscanClient 
 	if baseURL == "" {
 		baseURL = "https://api.etherscan.io"
 	}
-	logger := log.WithFields(logrus.Fields{"component": "etherscan"})
+	timeout := 10 * time.Second
+	if cfg.App.TimeoutSec > 0 {
+		timeout = time.Duration(cfg.App.TimeoutSec) * time.Second
+	}
+	base := NewBaseClient(timeout, log, "etherscan")
 	return &EtherscanClient{
-		apiKey:  cfg.Etherscan.ApiKey,
-		baseURL: baseURL,
-		client: &http.Client{
-			Timeout: 10 * time.Second,
-		},
-		log: logger,
+		BaseClient: base,
+		apiKey:     cfg.Etherscan.ApiKey,
+		baseURL:    baseURL,
 	}
 }
 
@@ -63,17 +61,6 @@ type TokenTransaction struct {
 	Confirmations     string `json:"confirmations"`
 }
 
-// TokenBalance - Структура для баланса токена
-type TokenBalance struct {
-	Account         string `json:"account"`
-	TokenID         string `json:"tokenID"`
-	ContractAddress string `json:"contractAddress"`
-	TokenName       string `json:"tokenName"`
-	TokenSymbol     string `json:"tokenSymbol"`
-	TokenDecimal    string `json:"tokenDecimal"`
-	Balance         string `json:"balance"`
-}
-
 // GetERC20Tokens - Получает список ERC20 токенов для адреса
 func (c *EtherscanClient) GetERC20Tokens(ctx context.Context, address string) ([]*TokenBalance, error) {
 	// NOTE: Этот метод использует неправильный endpoint!
@@ -98,28 +85,13 @@ func (c *EtherscanClient) GetETHBalance(ctx context.Context, address string) (fl
 		return 0, err
 	}
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		c.log.Errorf("Etherscan API request failed: %v", err)
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		c.log.Errorf("Failed to read response body: %v", err)
-		return 0, err
-	}
-
 	var result struct {
 		Status  string `json:"status"`
 		Message string `json:"message"`
 		Result  string `json:"result"`
 	}
 
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		c.log.Errorf("Failed to unmarshal response: %v", err)
+	if err := c.DoRequest(ctx, req, &result); err != nil {
 		return 0, err
 	}
 
@@ -157,28 +129,13 @@ func (c *EtherscanClient) GetInternalTransactions(ctx context.Context, address s
 		return nil, err
 	}
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		c.log.Errorf("Etherscan API request failed: %v", err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		c.log.Errorf("Failed to read response body: %v", err)
-		return nil, err
-	}
-
 	var result struct {
 		Status  string                   `json:"status"`
 		Message string                   `json:"message"`
 		Result  []map[string]interface{} `json:"result"`
 	}
 
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		c.log.Errorf("Failed to unmarshal response: %v", err)
+	if err := c.DoRequest(ctx, req, &result); err != nil {
 		return nil, err
 	}
 
