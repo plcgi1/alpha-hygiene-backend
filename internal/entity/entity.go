@@ -79,3 +79,8 @@ type Payment struct {
 	Address   string        `json:"address"`
 	CreatedAt time.Time     `json:"createdAt"`
 }
+
+type CheckRequest struct {
+	GUID    string `json:"guid" binding:"omitempty"`
+	Address string `json:"address" binding:"omitempty"`
+}

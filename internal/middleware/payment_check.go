@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"alpha-hygiene-backend/internal/cache"
+	"alpha-hygiene-backend/internal/entity"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -14,7 +15,6 @@ import (
 // PaymentCheckMiddleware - Middleware для проверки платежа в Redis
 func PaymentCheckMiddleware(cache cache.Cache, log *logrus.Logger) gin.HandlerFunc {
 	logger := log.WithFields(logrus.Fields{"component": "payment-check-middleware"})
-
 	return func(c *gin.Context) {
 		// Сохраняем тело запроса, чтобы оно можно было прочитать снова в обработчике
 		bodyBytes, err := c.GetRawData()
@@ -31,9 +31,7 @@ func PaymentCheckMiddleware(cache cache.Cache, log *logrus.Logger) gin.HandlerFu
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 		// Получаем GUID платежа из запроса
-		var request struct {
-			GUID string `json:"guid" binding:"omitempty"`
-		}
+		var request entity.CheckRequest
 
 		// Восстанавливаем тело запроса перед парсингом
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
@@ -48,32 +46,34 @@ func PaymentCheckMiddleware(cache cache.Cache, log *logrus.Logger) gin.HandlerFu
 
 		// Восстанавливаем тело запроса еще раз для обработчика
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
-		// Проверяем наличие платежа в Redis только если GUID предоставлен
-		if request.GUID != "" {
-			payment, err := cache.GetPayment(c.Request.Context(), request.GUID)
-			if err != nil {
-				logger.Errorf("Failed to get payment from cache: %v", err)
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Failed to check payment",
-				})
-				c.Abort()
-				return
-			}
-
-			// Проверяем статус платежа и устанавливаем флаг для обработчика
-			if payment != nil {
-				logger.Debugf("Payment found: %s, status: %s", request.GUID, payment.Status)
-				c.Set("has_valid_payment", true)
-				c.Set("payment", payment)
-			} else {
-				logger.Debugf("Payment not found: %s", request.GUID)
-				c.Set("has_valid_payment", false)
-			}
-		} else {
-			// Если GUID не предоставлен, устанавливаем флаг отсутствия платежа
+		if request.GUID == "" {
 			logger.Debugf("No GUID provided, skipping payment check")
 			c.Set("has_valid_payment", false)
+			c.Next()
+			return
+		}
+
+		// Проверяем наличие платежа в Redis только если GUID предоставлен
+		payment, err := cache.GetPayment(c.Request.Context(), request.GUID)
+		if err != nil {
+			logger.Errorf("Failed to get payment from cache: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to check payment",
+			})
+			c.Abort()
+			return
+		}
+		if payment == nil {
+			logger.Debugf("Payment not found: %s", request.GUID)
+			c.Set("has_valid_payment", false)
+			c.Next()
+			return
+		}
+		if payment.Status == entity.PaymentStatusPaid && payment.Address == request.Address {
+			// Проверяем статус платежа и устанавливаем флаг для обработчика
+			logger.Debugf("Payment found: %s, status: %s", request.GUID, payment.Status)
+			c.Set("has_valid_payment", true)
+			c.Set("payment", payment)
 		}
 
 		c.Next()
