@@ -22,7 +22,6 @@ import (
 	"alpha-hygiene-backend/pkg/logger"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -124,9 +123,12 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Обработчики
-	r.GET("/health", healthCheckHandler(log))
+	r.GET("/health", healthCheckHandler())
 	r.POST("/api/check", middleware.PaymentCheckMiddleware(redisCache, log), wallet.CheckWalletHandler(aggregatorService, log))
-	r.POST("/api/payment/create-invoice", payment.CreateInvoiceHandler(redisCache, log, cfg.App.BotApiUrl))
+	r.POST(
+		"/api/payment/create-invoice",
+		payment.CreateInvoiceHandler(redisCache, log, cfg),
+	)
 
 	// Запуск сервера
 	server := &http.Server{
@@ -170,7 +172,7 @@ func main() {
 // @Produce  json
 // @Success 200 {object} map[string]string
 // @Router /health [get]
-func healthCheckHandler(log *logrus.Logger) gin.HandlerFunc {
+func healthCheckHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{
 			"status": "healthy",

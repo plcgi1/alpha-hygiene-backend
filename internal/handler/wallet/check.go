@@ -5,9 +5,9 @@ import (
 
 	"alpha-hygiene-backend/internal/aggregator"
 	"alpha-hygiene-backend/internal/entity"
+	"alpha-hygiene-backend/internal/validator"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,25 +46,14 @@ func CheckWalletHandler(service *aggregator.Service, log *logrus.Logger) gin.Han
 		}
 
 		// Валидация запроса
-		validate := validator.New()
-
-		// Кастомный валидатор для Ethereum адресов
-		validate.RegisterValidation("eth_addr", func(fl validator.FieldLevel) bool {
-			addr := fl.Field().String()
-			if len(addr) != 42 {
-				return false
-			}
-			if addr[:2] != "0x" {
-				return false
-			}
-			// Проверка на наличие только hex символов
-			for _, char := range addr[2:] {
-				if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')) {
-					return false
-				}
-			}
-			return true
-		})
+		validate, err := validator.NewValidator()
+		if err != nil {
+			log.Errorf("Failed to create validator: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "internal server error",
+			})
+			return
+		}
 
 		if err := validate.Struct(req); err != nil {
 			log.Errorf("Validation failed: %v", err)

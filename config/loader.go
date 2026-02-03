@@ -19,8 +19,13 @@ type Config struct {
 			Requests int  `yaml:"requests"`
 			Window   int  `yaml:"window_seconds"`
 		} `yaml:"rate_limit"`
-		BotApiUrl string `yaml:"bot_api_url"`
 	} `yaml:"app"`
+
+	Telegram struct {
+		BotToken         string `yaml:"bot_token"`
+		WebhookApiSecret string `yaml:"webhook_secret"`
+	} `yaml:"telegram"`
+
 	GoPlus struct {
 		ApiKey    string `yaml:"key"`
 		ApiSecret string `yaml:"secret"`
@@ -101,8 +106,12 @@ func Load() (*Config, error) {
 			config.Redis.DB = db
 		}
 	}
-	if botApiUrl := getEnv("BOT_API_URL", ""); botApiUrl != "" {
-		config.App.BotApiUrl = botApiUrl
+
+	if botToken := getEnv("TELEGRAM_BOT_KEY", ""); botToken != "" {
+		config.Telegram.BotToken = botToken
+	}
+	if webhookApiSecret := getEnv("WEBHOOK_API_SECRET", ""); webhookApiSecret != "" {
+		config.Telegram.WebhookApiSecret = webhookApiSecret
 	}
 
 	return &config, nil

@@ -1,5 +1,7 @@
 package entity
 
+import "time"
+
 // Language - Язык для отчета
 type Language string
 
@@ -72,7 +74,8 @@ const (
 
 // Payment - Информация о платеже
 type Payment struct {
-	GUID    string        `json:"guid"`
-	Status  PaymentStatus `json:"status"`
-	Address string        `json:"address"`
+	GUID      string        `json:"guid"`
+	Status    PaymentStatus `json:"status"`
+	Address   string        `json:"address"`
+	CreatedAt time.Time     `json:"createdAt"`
 }

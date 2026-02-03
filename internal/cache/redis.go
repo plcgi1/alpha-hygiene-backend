@@ -113,10 +113,12 @@ func (c *RedisCache) GetPayment(ctx context.Context, guid string) (*entity.Payme
 func (c *RedisCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error {
 	key := fmt.Sprintf("payment:%s", guid)
 
+	now := time.Now()
 	payment := &entity.Payment{
-		GUID:    guid,
-		Address: address,
-		Status:  status,
+		GUID:      guid,
+		Address:   address,
+		Status:    status,
+		CreatedAt: now,
 	}
 
 	data, err := json.Marshal(payment)

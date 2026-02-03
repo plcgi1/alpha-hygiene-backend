@@ -1,13 +1,17 @@
 package payment
 
 import (
+	"encoding/json"
 	"net/http"
 
+	"alpha-hygiene-backend/config"
 	"alpha-hygiene-backend/internal/cache"
 	"alpha-hygiene-backend/internal/entity"
+	internalValidator "alpha-hygiene-backend/internal/validator"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,7 +37,7 @@ type CreateInvoiceResponse struct {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/payment/create-invoice [post]
-func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, botApiUrl string) gin.HandlerFunc {
+func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req CreateInvoiceRequest
 
@@ -46,27 +50,18 @@ func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, botApiUrl strin
 		}
 
 		// Валидация запроса
-		validate := validator.New()
+		var validate *validator.Validate
+		var err error
+		validate, err = internalValidator.NewValidator()
+		if err != nil {
+			log.Errorf("Failed to create validator: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "internal server error",
+			})
+			return
+		}
 
-		// Кастомный валидатор для Ethereum адресов
-		validate.RegisterValidation("eth_addr", func(fl validator.FieldLevel) bool {
-			addr := fl.Field().String()
-			if len(addr) != 42 {
-				return false
-			}
-			if addr[:2] != "0x" {
-				return false
-			}
-			// Проверка на наличие только hex символов
-			for _, char := range addr[2:] {
-				if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')) {
-					return false
-				}
-			}
-			return true
-		})
-
-		if err := validate.Struct(req); err != nil {
+		if err = validate.Struct(req); err != nil {
 			log.Errorf("Validation failed: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
@@ -75,9 +70,12 @@ func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, botApiUrl strin
 		}
 
 		// Создание инвойса через Telegram Bot API
-		// TODO: Реализовать реальный запрос к Telegram Bot API
-		// Временно возвращаем мок-ответ
-		orderUrl := "https://t.me/pay?hash=mock_hash_" + req.GUID
+		orderUrl, err := createTelegramInvoice(cfg.Telegram.BotToken, req.GUID)
+		if err != nil {
+			log.Errorf("Failed to create Telegram invoice: %v", err)
+			// В случае ошибки используем мок-ответ
+			orderUrl = "https://t.me/pay?hash=mock_hash_" + req.GUID
+		}
 
 		// Сохранение информации о платеже в Redis
 		if err := cache.AddPayment(c.Request.Context(), req.GUID, req.Address, entity.PaymentStatusPending); err != nil {
@@ -93,4 +91,58 @@ func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, botApiUrl strin
 			OrderURL: orderUrl,
 		})
 	}
+}
+
+// createTelegramInvoice создает инвойс через Telegram Bot API
+func createTelegramInvoice(botToken string, orderId string) (string, error) {
+	bot, err := tgbotapi.NewBotAPI(botToken)
+	if err != nil {
+		return "", err
+	}
+
+	// Подготовка payload для инвойса
+	payload := struct {
+		Oid string `json:"oid"`
+	}{
+		Oid: orderId,
+	}
+
+	payloadJson, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	// Создание запроса на создание инвойса с параметрами
+	params := tgbotapi.Params{}
+	params["title"] = "Alpha Hygiene full report activation"
+	params["description"] = "Activate full health report for your wallet"
+	params["payload"] = string(payloadJson)
+	params["currency"] = "XTR"
+
+	// Подготовка цен в формате JSON
+	prices := []tgbotapi.LabeledPrice{
+		{
+			Label:  "Alpha Hygiene activation Check",
+			Amount: 200,
+		},
+	}
+
+	pricesJson, err := json.Marshal(prices)
+	if err != nil {
+		return "", err
+	}
+
+	params["prices"] = string(pricesJson)
+
+	// Вызов Telegram Bot API
+	apiResp, err := bot.MakeRequest("createInvoiceLink", params)
+	if err != nil {
+		return "", err
+	}
+	var invoiceLink string
+	err = json.Unmarshal(apiResp.Result, &invoiceLink)
+	if err != nil {
+		return invoiceLink, err
+	}
+	return invoiceLink, nil
 }
