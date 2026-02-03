@@ -105,7 +105,7 @@ func WebhookHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Config) g
 		}
 
 		// Обновление статуса платежа в Redis
-		if err := cache.AddPayment(c.Request.Context(), payload.Oid, "", entity.PaymentStatusPaid); err != nil {
+		if err := cache.AddPayment(c.Request.Context(), payload.Oid, "", entity.PaymentStatusPaid, cfg.TTL.Payment); err != nil {
 			log.Errorf("Failed to update payment status: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to process payment",

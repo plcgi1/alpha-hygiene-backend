@@ -21,9 +21,9 @@ const (
 // Cache - Интерфейс для кэша
 type Cache interface {
 	GetWalletReport(ctx context.Context, address string) (*entity.WalletReport, error)
-	SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error
+	SetWalletReport(ctx context.Context, address string, report *entity.WalletReport, ttl time.Duration) error
 	GetPayment(ctx context.Context, guid string) (*entity.Payment, error)
-	AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error
+	AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus, ttl time.Duration) error
 	Close() error
 }
 
@@ -110,7 +110,7 @@ func (c *RedisCache) GetPayment(ctx context.Context, guid string) (*entity.Payme
 }
 
 // AddPayment - Добавляет или обновляет информацию о платеже в Redis
-func (c *RedisCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error {
+func (c *RedisCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus, ttl time.Duration) error {
 	key := fmt.Sprintf("payment:%s", guid)
 
 	// Проверяем, есть ли уже платеж с таким GUID
@@ -145,7 +145,7 @@ func (c *RedisCache) AddPayment(ctx context.Context, guid string, address string
 		return err
 	}
 
-	err = c.client.Set(ctx, key, string(data), CacheExpiration).Err()
+	err = c.client.Set(ctx, key, string(data), ttl).Err()
 	if err != nil {
 		c.log.Errorf("Failed to set payment in cache: %v", err)
 		return err
@@ -160,7 +160,7 @@ func (c *RedisCache) AddPayment(ctx context.Context, guid string, address string
 	return nil
 }
 
-func (c *RedisCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error {
+func (c *RedisCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport, ttl time.Duration) error {
 	key := c.getCacheKey(address)
 
 	data, err := json.Marshal(report)
@@ -169,7 +169,7 @@ func (c *RedisCache) SetWalletReport(ctx context.Context, address string, report
 		return err
 	}
 
-	err = c.client.Set(ctx, key, string(data), CacheExpiration).Err()
+	err = c.client.Set(ctx, key, string(data), ttl).Err()
 	if err != nil {
 		c.log.Errorf("Failed to set cache: %v", err)
 		return err

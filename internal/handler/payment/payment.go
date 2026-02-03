@@ -78,7 +78,7 @@ func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Con
 		}
 
 		// Сохранение информации о платеже в Redis
-		if err := cache.AddPayment(c.Request.Context(), req.GUID, req.Address, entity.PaymentStatusPending); err != nil {
+		if err := cache.AddPayment(c.Request.Context(), req.GUID, req.Address, entity.PaymentStatusPending, cfg.TTL.Payment); err != nil {
 			log.Errorf("Failed to add payment to cache: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to create invoice",

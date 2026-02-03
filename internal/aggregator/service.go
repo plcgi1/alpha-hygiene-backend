@@ -133,7 +133,7 @@ func (s *Service) CheckWallet(ctx context.Context, address string, hasValidPayme
 	}
 	// Сохраняем в кэш используя основной контекст с таймаутом
 	if s.cache != nil {
-		if err := s.cache.SetWalletReport(ctxWithTimeout, address, report); err != nil {
+		if err := s.cache.SetWalletReport(ctxWithTimeout, address, report, s.cfg.TTL.Payment); err != nil {
 			s.log.Errorf("Failed to cache report: %v", err)
 		}
 	}

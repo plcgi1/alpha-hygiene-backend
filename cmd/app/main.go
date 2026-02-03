@@ -131,6 +131,7 @@ func main() {
 	)
 	r.POST(
 		"/api/payment/webhook",
+		middleware.TelegramWebhookMiddleware(cfg, log),
 		payment.WebhookHandler(redisCache, log, cfg),
 	)
 

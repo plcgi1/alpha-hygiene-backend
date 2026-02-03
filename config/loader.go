@@ -2,9 +2,11 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
@@ -49,6 +51,10 @@ type Config struct {
 		BaseScore float64            `yaml:"base_score"`
 		Weights   map[string]float64 `yaml:"weights"`
 	} `yaml:"scoring"`
+	TTL struct {
+		Report  time.Duration `yaml:"report"`
+		Payment time.Duration `yaml:"payment"`
+	} `yaml:"ttl"`
 }
 
 func getEnv(key, defaultValue string) string {
@@ -112,11 +118,28 @@ func Load() (*Config, error) {
 	if botToken := getEnv("TELEGRAM_BOT_KEY", ""); botToken != "" {
 		config.Telegram.BotToken = botToken
 	}
+	if webhookSecret := getEnv("TELEGRAM_WEBHOOK_SECRET", ""); webhookSecret != "" {
+		config.Telegram.WebhookApiSecret = webhookSecret
+	}
 	if oneTimePrice := getEnv("ONE_TIME_PRICE", ""); oneTimePrice != "" {
 		price, err := strconv.ParseInt(oneTimePrice, 10, 64)
 		if err == nil {
 			config.Telegram.OneTimePrice = price
 		}
+	}
+	if reportDuration := getEnv("REPORT_TTL", "5m"); reportDuration != "" {
+		duration, err := time.ParseDuration(reportDuration)
+		if err != nil {
+			log.Fatalf("Bad format for REPORT_TTL: %v", err)
+		}
+		config.TTL.Report = duration
+	}
+	if paymentDuration := getEnv("PAYMENT_TTL", "10m"); paymentDuration != "" {
+		duration, err := time.ParseDuration(paymentDuration)
+		if err != nil {
+			log.Fatalf("Bad format for PAYMENT_TTL: %v", err)
+		}
+		config.TTL.Payment = duration
 	}
 
 	return &config, nil

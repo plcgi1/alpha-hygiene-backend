@@ -38,3 +38,7 @@ scoring:
     rug_pulls: 0.2
     dead_nft: 0.1
     asset_ratio: 0.1
+
+ttl:
+  report: 5m # set from .env
+  payment: 5m # set from .env

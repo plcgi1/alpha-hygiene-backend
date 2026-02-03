@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"alpha-hygiene-backend/config"
 	"alpha-hygiene-backend/internal/entity"
@@ -30,7 +31,7 @@ func (m *MockCache) GetWalletReport(ctx context.Context, address string) (*entit
 	return args.Get(0).(*entity.WalletReport), args.Error(1)
 }
 
-func (m *MockCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error {
+func (m *MockCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport, ttl time.Duration) error {
 	args := m.Called(ctx, address, report)
 	return args.Error(0)
 }
@@ -43,7 +44,7 @@ func (m *MockCache) GetPayment(ctx context.Context, guid string) (*entity.Paymen
 	return args.Get(0).(*entity.Payment), args.Error(1)
 }
 
-func (m *MockCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error {
+func (m *MockCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus, ttl time.Duration) error {
 	args := m.Called(ctx, guid, address, status)
 	return args.Error(0)
 }
@@ -58,7 +59,15 @@ func TestWebhookHandler_PreCheckoutQuery(t *testing.T) {
 	log, err := logger.New("debug")
 	assert.NoError(t, err)
 
-	cfg := &config.Config{}
+	cfg := &config.Config{
+		Telegram: struct {
+			BotToken         string `yaml:"bot_token"`
+			WebhookApiSecret string `yaml:"webhook_secret"`
+			OneTimePrice     int64  `yaml:"one_time_price"`
+		}{
+			WebhookApiSecret: "test-secret",
+		},
+	}
 
 	mockCache := new(MockCache)
 	handler := WebhookHandler(mockCache, log, cfg)
@@ -88,6 +97,7 @@ func TestWebhookHandler_PreCheckoutQuery(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "test-secret")
 	c.Request = req
 
 	// Вызываем обработчик
@@ -107,7 +117,15 @@ func TestWebhookHandler_NoSuccessfulPayment(t *testing.T) {
 	log, err := logger.New("debug")
 	assert.NoError(t, err)
 
-	cfg := &config.Config{}
+	cfg := &config.Config{
+		Telegram: struct {
+			BotToken         string `yaml:"bot_token"`
+			WebhookApiSecret string `yaml:"webhook_secret"`
+			OneTimePrice     int64  `yaml:"one_time_price"`
+		}{
+			WebhookApiSecret: "test-secret",
+		},
+	}
 
 	mockCache := new(MockCache)
 	handler := WebhookHandler(mockCache, log, cfg)
@@ -134,6 +152,7 @@ func TestWebhookHandler_NoSuccessfulPayment(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "test-secret")
 	c.Request = req
 
 	// Вызываем обработчик
@@ -193,6 +212,7 @@ func TestWebhookHandler_SuccessfulPayment(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "WebhookApiSecret")
 	c.Request = req
 
 	// Вызываем обработчик
@@ -215,7 +235,16 @@ func TestWebhookHandler_InvalidAmount(t *testing.T) {
 	log, err := logger.New("debug")
 	assert.NoError(t, err)
 
-	cfg := &config.Config{}
+	cfg := &config.Config{
+		Telegram: struct {
+			BotToken         string `yaml:"bot_token"`
+			WebhookApiSecret string `yaml:"webhook_secret"`
+			OneTimePrice     int64  `yaml:"one_time_price"`
+		}{
+			WebhookApiSecret: "test-secret",
+			OneTimePrice:     200,
+		},
+	}
 
 	mockCache := new(MockCache)
 	// Устанавливаем ожидания
@@ -252,6 +281,7 @@ func TestWebhookHandler_InvalidAmount(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "test-secret")
 	c.Request = req
 
 	// Вызываем обработчик
@@ -271,7 +301,15 @@ func TestWebhookHandler_InvalidPayload(t *testing.T) {
 	log, err := logger.New("debug")
 	assert.NoError(t, err)
 
-	cfg := &config.Config{}
+	cfg := &config.Config{
+		Telegram: struct {
+			BotToken         string `yaml:"bot_token"`
+			WebhookApiSecret string `yaml:"webhook_secret"`
+			OneTimePrice     int64  `yaml:"one_time_price"`
+		}{
+			WebhookApiSecret: "test-secret",
+		},
+	}
 
 	mockCache := new(MockCache)
 	handler := WebhookHandler(mockCache, log, cfg)
@@ -305,6 +343,7 @@ func TestWebhookHandler_InvalidPayload(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "test-secret")
 	c.Request = req
 
 	// Вызываем обработчик

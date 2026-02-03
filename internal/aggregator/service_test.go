@@ -43,15 +43,7 @@ func TestCheckWallet(t *testing.T) {
 				Window:   60,
 			},
 		},
-		// Telegram: struct {
-		// 	BotToken         string `yaml:"bot_token"`
-		// 	OneTimePrice     int64  `yaml:"one_time_price"`
-		// 	WebhookApiSecret string `yaml:"webhook_secret"`
-		// }{
-		// 	BotToken:         "test_token",
-		// 	OneTimePrice:     300,
-		// 	WebhookApiSecret: "test_secret",
-		// },
+
 		Scoring: struct {
 			BaseScore float64            `yaml:"base_score"`
 			Weights   map[string]float64 `yaml:"weights"`
@@ -99,7 +91,7 @@ func (m *mockCache) GetWalletReport(ctx context.Context, address string) (*entit
 	return nil, nil // Возвращаем nil, чтобы не использовать кэш в тестах
 }
 
-func (m *mockCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport) error {
+func (m *mockCache) SetWalletReport(ctx context.Context, address string, report *entity.WalletReport, ttl time.Duration) error {
 	return nil
 }
 
@@ -107,7 +99,7 @@ func (m *mockCache) GetPayment(ctx context.Context, guid string) (*entity.Paymen
 	return nil, nil
 }
 
-func (m *mockCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus) error {
+func (m *mockCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus, ttl time.Duration) error {
 	return nil
 }
 
