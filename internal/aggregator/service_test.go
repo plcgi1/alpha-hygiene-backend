@@ -29,7 +29,18 @@ func TestCheckWallet(t *testing.T) {
 				Requests int  `yaml:"requests"`
 				Window   int  `yaml:"window_seconds"`
 			} `yaml:"rate_limit"`
+			AuthGuard struct {
+				Skip bool `yaml:"skip"`
+				TTL  int  `yaml:"ttl"`
+			} `yaml:"auth_guard"`
 		}{
+			AuthGuard: struct {
+				Skip bool `yaml:"skip"`
+				TTL  int  `yaml:"ttl"`
+			}{
+				Skip: false,
+				TTL:  86400,
+			},
 			Port:       8080,
 			LogLevel:   "debug",
 			TimeoutSec: 30,
@@ -99,7 +110,11 @@ func (m *mockCache) GetPayment(ctx context.Context, guid string) (*entity.Paymen
 	return nil, nil
 }
 
-func (m *mockCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus, ttl time.Duration) error {
+func (m *mockCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus, ttl time.Duration, username string, tgId int64) error {
+	return nil
+}
+
+func (m *mockCache) ProcessPaymentSuccess(ctx context.Context, userID string, guid string, reportData *entity.WalletReport) error {
 	return nil
 }
 

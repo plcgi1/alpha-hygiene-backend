@@ -7,30 +7,14 @@ services:
       - "8080:8080"
     env_file:
       - .env
-    depends_on:
-      - redis
+    volumes:
+      - sqlite_data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    environment:
-      - REDIS_ADDR=redis:6379
-
-  redis:
-    image: redis:7-alpine
-    container_name: alpha-hygiene-backend-redis
-    ports:
-      - "6380:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 volumes:
-  redis_data:
+  sqlite_data:

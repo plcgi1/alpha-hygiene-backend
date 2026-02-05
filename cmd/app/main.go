@@ -13,12 +13,12 @@ import (
 	"alpha-hygiene-backend/config"
 	_ "alpha-hygiene-backend/docs"
 	"alpha-hygiene-backend/internal/aggregator"
-	"alpha-hygiene-backend/internal/cache"
 	"alpha-hygiene-backend/internal/checker"
 	"alpha-hygiene-backend/internal/handler/payment"
 	"alpha-hygiene-backend/internal/handler/wallet"
 	"alpha-hygiene-backend/internal/middleware"
 	"alpha-hygiene-backend/internal/provider"
+	"alpha-hygiene-backend/internal/repository"
 	"alpha-hygiene-backend/pkg/logger"
 
 	"github.com/gin-gonic/gin"
@@ -60,18 +60,18 @@ func main() {
 	etherscanClient := provider.NewEtherscanClient(cfg, log.WithContext(&gin.Context{}))
 	alchemyClient := provider.NewAlchemyClient(cfg, log.WithContext(&gin.Context{}))
 
-	// Инициализация Redis кэша
-	var redisCache cache.Cache
-	redisCache, err = cache.NewRedisCache(cfg, log.WithContext(&gin.Context{}))
+	// Инициализация SQLite репозитория
+	var repo repository.Repository
+	repo, err = repository.NewSQLiteRepository(cfg, log.WithContext(&gin.Context{}))
 	if err != nil {
-		log.Warnf("Failed to initialize Redis cache: %v. Cache will not be available.", err)
+		log.Warnf("Failed to initialize SQLite repository: %v. Cache will not be available.", err)
 	}
 
 	// Инициализация фабрики проверок
 	checkerFactory := checker.NewFactory(cfg, goplusClient, etherscanClient, alchemyClient, log.WithContext(&gin.Context{}))
 
 	// Инициализация агрегатора
-	aggregatorService := aggregator.NewService(cfg, checkerFactory, redisCache, log.WithContext(&gin.Context{}))
+	aggregatorService := aggregator.NewService(cfg, checkerFactory, repo, log.WithContext(&gin.Context{}))
 
 	// Настройка Gin
 	if cfg.App.LogLevel == "debug" {
@@ -124,19 +124,20 @@ func main() {
 
 	// Обработчики
 	r.GET("/health", healthCheckHandler())
-	r.POST("/api/check", middleware.PaymentCheckMiddleware(redisCache, log), wallet.CheckWalletHandler(aggregatorService, log))
+	r.POST("/api/check", middleware.PaymentCheckMiddleware(repo, log), wallet.CheckWalletHandler(aggregatorService, log))
 	r.POST(
 		"/api/payment/create-invoice",
-		payment.CreateInvoiceHandler(redisCache, log, cfg),
+		middleware.TelegramAuthMiddleware(cfg, log),
+		payment.CreateInvoiceHandler(repo, log, cfg),
 	)
 	r.POST(
 		"/api/payment/webhook",
-		middleware.TelegramWebhookMiddleware(cfg, log),
-		payment.WebhookHandler(redisCache, log, cfg),
+		middleware.PaymentWebhookMiddleware(cfg, log),
+		payment.WebhookHandler(repo, log, cfg),
 	)
 	r.GET(
 		"/api/payment-status/:GUID",
-		payment.GetPaymentStatusHandler(redisCache, log),
+		payment.GetPaymentStatusHandler(repo, log),
 	)
 
 	// Запуск сервера

@@ -6,11 +6,17 @@ app:
     enabled: true
     requests: 100
     window_seconds: 60
+  auth_guard:
+    skip: false
+    ttl: 86400 # 24 hours in seconds
   
 
 telegram:
   bot_api_url: "USE-SECRET-FROM-.env"
   bot_token: "TELEGRAM_BOT_KEY-FROM-.env"
+  webhook_secret: "USE-SECRET-FROM-.env"
+
+payment:
   webhook_secret: "USE-SECRET-FROM-.env"
 
 goplus:
@@ -25,10 +31,8 @@ alchemy:
   api_key: "USE-KEY-FROM-.env"
   url: "https://eth-mainnet.g.alchemy.com/v2"
 
-redis:
-  addr: "localhost:6379"
-  password: ""
-  db: 0
+sqlite:
+  path: "./data.db"
 
 scoring:
   base_score: 100
@@ -42,3 +46,6 @@ scoring:
 ttl:
   report: 5m # set from .env
   payment: 5m # set from .env
+
+tasks:
+  set_expires_tasks: true

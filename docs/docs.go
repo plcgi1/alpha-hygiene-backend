@@ -331,11 +331,11 @@ const docTemplate = `{
         "payment.CreateInvoiceResponse": {
             "type": "object",
             "properties": {
-                "guid": {
+                "orderId": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
                 },
-                "order_url": {
+                "orderUrl": {
                     "type": "string",
                     "example": "https://t.me/pay?hash=1234567890abcdef"
                 }

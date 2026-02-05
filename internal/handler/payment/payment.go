@@ -5,8 +5,9 @@ import (
 	"net/http"
 
 	"alpha-hygiene-backend/config"
-	"alpha-hygiene-backend/internal/cache"
 	"alpha-hygiene-backend/internal/entity"
+	"alpha-hygiene-backend/internal/middleware"
+	"alpha-hygiene-backend/internal/repository"
 	internalValidator "alpha-hygiene-backend/internal/validator"
 
 	"github.com/gin-gonic/gin"
@@ -23,8 +24,8 @@ type CreateInvoiceRequest struct {
 
 // CreateInvoiceResponse - Ответ с ссылкой на инвойс
 type CreateInvoiceResponse struct {
-	OrderURL string `json:"order_url" example:"https://t.me/pay?hash=1234567890abcdef"`
-	GUID     string `json:"guid" example:"550e8400-e29b-41d4-a716-446655440000"`
+	OrderUrl string `json:"orderUrl" example:"https://t.me/pay?hash=1234567890abcdef"`
+	OrderId  string `json:"orderId" example:"550e8400-e29b-41d4-a716-446655440000"`
 }
 
 // CreateInvoiceHandler - Обработчик создания инвойса
@@ -38,7 +39,7 @@ type CreateInvoiceResponse struct {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/payment/create-invoice [post]
-func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Config) gin.HandlerFunc {
+func CreateInvoiceHandler(repo repository.Repository, log *logrus.Logger, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req CreateInvoiceRequest
 
@@ -79,8 +80,19 @@ func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Con
 			orderUrl = "https://t.me/pay?hash=mock_hash_" + uuidV4
 		}
 
-		// Сохранение информации о платеже в Redis
-		if err := cache.AddPayment(c.Request.Context(), uuidV4, req.Address, entity.PaymentStatusPending, cfg.TTL.Payment); err != nil {
+		// Получение данных о Telegram пользователе из контекста
+		var username string
+		var tgId int64
+		if tgUser, exists := c.Get("telegram_user"); exists {
+			// telegram_user имеет тип middleware.TelegramUser
+			if user, ok := tgUser.(middleware.TelegramUser); ok {
+				username = user.Username
+				tgId = user.ID
+			}
+		}
+
+		// Сохранение информации о платеже в SQLite
+		if err := repo.AddPayment(c.Request.Context(), uuidV4, req.Address, entity.PaymentStatusPending, cfg.TTL.Payment, username, tgId); err != nil {
 			log.Errorf("Failed to add payment to cache: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to create invoice",
@@ -90,8 +102,8 @@ func CreateInvoiceHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Con
 
 		// Возврат ответа с ссылкой на инвойс
 		c.JSON(http.StatusOK, CreateInvoiceResponse{
-			OrderURL: orderUrl,
-			GUID:     uuidV4,
+			OrderUrl: orderUrl,
+			OrderId:  uuidV4,
 		})
 	}
 }
@@ -113,7 +125,7 @@ type PaymentStatusResponse struct {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/payment-status/{guid} [get]
-func GetPaymentStatusHandler(cache cache.Cache, log *logrus.Logger) gin.HandlerFunc {
+func GetPaymentStatusHandler(repo repository.Repository, log *logrus.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		guid := c.Param("GUID")
 
@@ -126,8 +138,8 @@ func GetPaymentStatusHandler(cache cache.Cache, log *logrus.Logger) gin.HandlerF
 			return
 		}
 
-		// Получаем информацию о платеже из кэша
-		payment, err := cache.GetPayment(c.Request.Context(), guid)
+		// Получаем информацию о платеже из хранилища
+		payment, err := repo.GetPayment(c.Request.Context(), guid)
 		if err != nil {
 			log.Errorf("Failed to get payment from cache: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{

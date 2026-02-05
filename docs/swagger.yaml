@@ -46,10 +46,10 @@ definitions:
     type: object
   payment.CreateInvoiceResponse:
     properties:
-      guid:
+      orderId:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
-      order_url:
+      orderUrl:
         example: https://t.me/pay?hash=1234567890abcdef
         type: string
     type: object

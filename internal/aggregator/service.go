@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"alpha-hygiene-backend/config"
-	"alpha-hygiene-backend/internal/cache"
 	"alpha-hygiene-backend/internal/checker"
 	"alpha-hygiene-backend/internal/entity"
+	"alpha-hygiene-backend/internal/repository"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -20,20 +20,20 @@ type CheckFactory interface {
 
 // Service - Агрегатор проверок
 type Service struct {
-	cfg     *config.Config
-	factory CheckFactory
-	cache   cache.Cache
-	log     *logrus.Entry
+	cfg        *config.Config
+	factory    CheckFactory
+	repository repository.Repository
+	log        *logrus.Entry
 }
 
 // NewService - Создает новый агрегатор
-func NewService(cfg *config.Config, factory CheckFactory, cache cache.Cache, log *logrus.Entry) *Service {
+func NewService(cfg *config.Config, factory CheckFactory, repo repository.Repository, log *logrus.Entry) *Service {
 	logger := log.WithFields(logrus.Fields{"component": "service"})
 	return &Service{
-		cfg:     cfg,
-		factory: factory,
-		cache:   cache,
-		log:     logger,
+		cfg:        cfg,
+		factory:    factory,
+		repository: repo,
+		log:        logger,
 	}
 }
 
@@ -42,9 +42,9 @@ func (s *Service) CheckWallet(ctx context.Context, address string, hasValidPayme
 	// Создаем основной контекст с таймаутом. Увеличиваем для AI сервиса.
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute) // 5 минут для работы с AI
 	defer cancel()
-	// Проверяем кэш
-	if s.cache != nil {
-		cachedReport, err := s.cache.GetWalletReport(ctxWithTimeout, address)
+	// Проверяем кэш/хранилище
+	if s.repository != nil {
+		cachedReport, err := s.repository.GetWalletReport(ctxWithTimeout, address)
 
 		if err != nil {
 			s.log.Errorf("Failed to get cached report: %v", err)
@@ -131,9 +131,9 @@ func (s *Service) CheckWallet(ctx context.Context, address string, hasValidPayme
 	if len(errors) > 0 {
 		return report, nil
 	}
-	// Сохраняем в кэш используя основной контекст с таймаутом
-	if s.cache != nil {
-		if err := s.cache.SetWalletReport(ctxWithTimeout, address, report, s.cfg.TTL.Payment); err != nil {
+	// Сохраняем в кэш/хранилище используя основной контекст с таймаутом
+	if s.repository != nil {
+		if err := s.repository.SetWalletReport(ctxWithTimeout, address, report, s.cfg.TTL.Payment); err != nil {
 			s.log.Errorf("Failed to cache report: %v", err)
 		}
 	}

@@ -44,8 +44,13 @@ func (m *MockCache) GetPayment(ctx context.Context, guid string) (*entity.Paymen
 	return args.Get(0).(*entity.Payment), args.Error(1)
 }
 
-func (m *MockCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus, ttl time.Duration) error {
-	args := m.Called(ctx, guid, address, status)
+func (m *MockCache) AddPayment(ctx context.Context, guid string, address string, status entity.PaymentStatus, ttl time.Duration, username string, tgId int64) error {
+	args := m.Called(ctx, guid, address, status, ttl, username, tgId)
+	return args.Error(0)
+}
+
+func (m *MockCache) ProcessPaymentSuccess(ctx context.Context, userID string, guid string, reportData *entity.WalletReport) error {
+	args := m.Called(ctx, userID, guid, reportData)
 	return args.Error(0)
 }
 
@@ -60,6 +65,11 @@ func TestWebhookHandler_PreCheckoutQuery(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg := &config.Config{
+		Payment: struct {
+			WebhookSecret string `yaml:"webhook_secret"`
+		}{
+			WebhookSecret: "test-payment-secret",
+		},
 		Telegram: struct {
 			BotToken         string `yaml:"bot_token"`
 			WebhookApiSecret string `yaml:"webhook_secret"`
@@ -97,7 +107,7 @@ func TestWebhookHandler_PreCheckoutQuery(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "test-secret")
+	req.Header.Set("X-Payment-Webhook-Secret", "test-payment-secret")
 	c.Request = req
 
 	// Вызываем обработчик
@@ -118,6 +128,11 @@ func TestWebhookHandler_NoSuccessfulPayment(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg := &config.Config{
+		Payment: struct {
+			WebhookSecret string `yaml:"webhook_secret"`
+		}{
+			WebhookSecret: "test-payment-secret",
+		},
 		Telegram: struct {
 			BotToken         string `yaml:"bot_token"`
 			WebhookApiSecret string `yaml:"webhook_secret"`
@@ -152,7 +167,7 @@ func TestWebhookHandler_NoSuccessfulPayment(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "test-secret")
+	req.Header.Set("X-Payment-Webhook-Secret", "test-payment-secret")
 	c.Request = req
 
 	// Вызываем обработчик
@@ -176,10 +191,11 @@ func TestWebhookHandler_SuccessfulPayment(t *testing.T) {
 	cfg.Telegram.BotToken = "test_token"
 	cfg.Telegram.OneTimePrice = 300
 	cfg.Telegram.WebhookApiSecret = "WebhookApiSecret"
+	cfg.Payment.WebhookSecret = "test-payment-secret"
 
 	mockCache := new(MockCache)
 	// Устанавливаем ожидания
-	mockCache.On("AddPayment", mock.Anything, "test_guid", "", entity.PaymentStatusPaid).Return(nil)
+	mockCache.On("AddPayment", mock.Anything, "test_guid", "", entity.PaymentStatusPaid, mock.Anything, "", int64(0)).Return(nil)
 
 	handler := WebhookHandler(mockCache, log, cfg)
 
@@ -212,7 +228,7 @@ func TestWebhookHandler_SuccessfulPayment(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "WebhookApiSecret")
+	req.Header.Set("X-Payment-Webhook-Secret", "test-payment-secret")
 	c.Request = req
 
 	// Вызываем обработчик
@@ -236,6 +252,11 @@ func TestWebhookHandler_InvalidAmount(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg := &config.Config{
+		Payment: struct {
+			WebhookSecret string `yaml:"webhook_secret"`
+		}{
+			WebhookSecret: "test-payment-secret",
+		},
 		Telegram: struct {
 			BotToken         string `yaml:"bot_token"`
 			WebhookApiSecret string `yaml:"webhook_secret"`
@@ -281,7 +302,7 @@ func TestWebhookHandler_InvalidAmount(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "test-secret")
+	req.Header.Set("X-Payment-Webhook-Secret", "test-payment-secret")
 	c.Request = req
 
 	// Вызываем обработчик
@@ -302,6 +323,11 @@ func TestWebhookHandler_InvalidPayload(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg := &config.Config{
+		Payment: struct {
+			WebhookSecret string `yaml:"webhook_secret"`
+		}{
+			WebhookSecret: "test-payment-secret",
+		},
 		Telegram: struct {
 			BotToken         string `yaml:"bot_token"`
 			WebhookApiSecret string `yaml:"webhook_secret"`
@@ -343,7 +369,7 @@ func TestWebhookHandler_InvalidPayload(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/payment/webhook", bytes.NewBufferString(reqJson))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Telegram-Bot-Api-Secret-Token", "test-secret")
+	req.Header.Set("X-Payment-Webhook-Secret", "test-payment-secret")
 	c.Request = req
 
 	// Вызываем обработчик

@@ -78,6 +78,8 @@ type Payment struct {
 	Status    PaymentStatus `json:"status"`
 	Address   string        `json:"address"`
 	CreatedAt time.Time     `json:"createdAt"`
+	Username  string        `json:"username"`
+	TgId      int64         `json:"tgId"`
 }
 
 type CheckRequest struct {

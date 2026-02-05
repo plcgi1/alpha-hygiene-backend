@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"alpha-hygiene-backend/config"
-	"alpha-hygiene-backend/internal/cache"
 	"alpha-hygiene-backend/internal/entity"
+	"alpha-hygiene-backend/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -54,7 +54,7 @@ type WebhookResponse struct {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/payment/webhook [post]
-func WebhookHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Config) gin.HandlerFunc {
+func WebhookHandler(repo repository.Repository, log *logrus.Logger, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req WebhookRequest
 
@@ -104,8 +104,8 @@ func WebhookHandler(cache cache.Cache, log *logrus.Logger, cfg *config.Config) g
 			return
 		}
 
-		// Обновление статуса платежа в Redis
-		if err := cache.AddPayment(c.Request.Context(), payload.Oid, "", entity.PaymentStatusPaid, cfg.TTL.Payment); err != nil {
+		// Обновление статуса платежа в SQLite
+		if err := repo.AddPayment(c.Request.Context(), payload.Oid, "", entity.PaymentStatusPaid, cfg.TTL.Payment, "", 0); err != nil {
 			log.Errorf("Failed to update payment status: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to process payment",

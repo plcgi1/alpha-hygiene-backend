@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -22,6 +21,10 @@ type Config struct {
 			Requests int  `yaml:"requests"`
 			Window   int  `yaml:"window_seconds"`
 		} `yaml:"rate_limit"`
+		AuthGuard struct {
+			Skip bool `yaml:"skip"`
+			TTL  int  `yaml:"ttl"`
+		} `yaml:"auth_guard"`
 	} `yaml:"app"`
 
 	Telegram struct {
@@ -29,6 +32,10 @@ type Config struct {
 		WebhookApiSecret string `yaml:"webhook_secret"`
 		OneTimePrice     int64  `yaml:"one_time_price"`
 	} `yaml:"telegram"`
+
+	Payment struct {
+		WebhookSecret string `yaml:"webhook_secret"`
+	} `yaml:"payment"`
 
 	GoPlus struct {
 		ApiKey    string `yaml:"key"`
@@ -42,11 +49,9 @@ type Config struct {
 		ApiKey string `yaml:"api_key"`
 		URL    string `yaml:"url"`
 	} `yaml:"alchemy"`
-	Redis struct {
-		Addr     string `yaml:"addr"`
-		Password string `yaml:"password"`
-		DB       int    `yaml:"db"`
-	} `yaml:"redis"`
+	SQLite struct {
+		Path string `yaml:"path"`
+	} `yaml:"sqlite"`
 	Scoring struct {
 		BaseScore float64            `yaml:"base_score"`
 		Weights   map[string]float64 `yaml:"weights"`
@@ -55,6 +60,21 @@ type Config struct {
 		Report  time.Duration `yaml:"report"`
 		Payment time.Duration `yaml:"payment"`
 	} `yaml:"ttl"`
+
+	Tasks struct {
+		SetExpiresTasks bool `yaml:"set_expires_tasks"`
+	} `yaml:"tasks"`
+}
+
+// getEnvBool retrieves boolean value from environment variables
+func getEnvBool(key string, defaultValue bool) bool {
+	if value, exists := os.LookupEnv(key); exists {
+		boolVal, err := strconv.ParseBool(value)
+		if err == nil {
+			return boolVal
+		}
+	}
+	return defaultValue
 }
 
 func getEnv(key, defaultValue string) string {
@@ -98,21 +118,13 @@ func Load() (*Config, error) {
 	if alchemyApiKey := getEnv("ALCHEMY_RPC_API_KEY", ""); alchemyApiKey != "" {
 		config.Alchemy.ApiKey = alchemyApiKey
 	}
+	if setExpiresTasks := getEnv("SET_EXPIRES_TASKS", ""); setExpiresTasks != "" {
+		if boolVal, err := strconv.ParseBool(setExpiresTasks); err == nil {
+			config.Tasks.SetExpiresTasks = boolVal
+		}
+	}
 	if alchemyURL := getEnv("ALCHEMY_API_URL", ""); alchemyURL != "" {
 		config.Alchemy.URL = alchemyURL
-	}
-	if redisAddr := getEnv("REDIS_ADDR", ""); redisAddr != "" {
-		config.Redis.Addr = redisAddr
-	}
-	if redisPassword := getEnv("REDIS_PASSWORD", ""); redisPassword != "" {
-		config.Redis.Password = redisPassword
-	}
-	if redisDB := getEnv("REDIS_DB", ""); redisDB != "" {
-		var db int
-		_, err = fmt.Sscanf(redisDB, "%d", &db)
-		if err == nil {
-			config.Redis.DB = db
-		}
 	}
 
 	if botToken := getEnv("TELEGRAM_BOT_KEY", ""); botToken != "" {
@@ -120,6 +132,9 @@ func Load() (*Config, error) {
 	}
 	if webhookSecret := getEnv("TELEGRAM_WEBHOOK_SECRET", ""); webhookSecret != "" {
 		config.Telegram.WebhookApiSecret = webhookSecret
+	}
+	if paymentWebhookSecret := getEnv("PAYMENT_WEBHOOK_SECRET", ""); paymentWebhookSecret != "" {
+		config.Payment.WebhookSecret = paymentWebhookSecret
 	}
 	if oneTimePrice := getEnv("ONE_TIME_PRICE", ""); oneTimePrice != "" {
 		price, err := strconv.ParseInt(oneTimePrice, 10, 64)

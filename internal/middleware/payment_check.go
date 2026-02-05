@@ -5,15 +5,15 @@ import (
 	"io"
 	"net/http"
 
-	"alpha-hygiene-backend/internal/cache"
 	"alpha-hygiene-backend/internal/entity"
+	"alpha-hygiene-backend/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
-// PaymentCheckMiddleware - Middleware для проверки платежа в Redis
-func PaymentCheckMiddleware(cache cache.Cache, log *logrus.Logger) gin.HandlerFunc {
+// PaymentCheckMiddleware - Middleware для проверки платежа в SQLite
+func PaymentCheckMiddleware(repo repository.Repository, log *logrus.Logger) gin.HandlerFunc {
 	logger := log.WithFields(logrus.Fields{"component": "payment-check-middleware"})
 	return func(c *gin.Context) {
 		// Сохраняем тело запроса, чтобы оно можно было прочитать снова в обработчике
@@ -53,8 +53,8 @@ func PaymentCheckMiddleware(cache cache.Cache, log *logrus.Logger) gin.HandlerFu
 			return
 		}
 
-		// Проверяем наличие платежа в Redis только если GUID предоставлен
-		payment, err := cache.GetPayment(c.Request.Context(), request.GUID)
+		// Проверяем наличие платежа в SQLite только если GUID предоставлен
+		payment, err := repo.GetPayment(c.Request.Context(), request.GUID)
 		if err != nil {
 			logger.Errorf("Failed to get payment from cache: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
