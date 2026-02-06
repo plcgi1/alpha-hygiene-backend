@@ -83,6 +83,6 @@ type Payment struct {
 }
 
 type CheckRequest struct {
-	GUID    string `json:"guid" binding:"omitempty"`
+	GUID    string `json:"orderId" binding:"omitempty"`
 	Address string `json:"address" binding:"omitempty"`
 }

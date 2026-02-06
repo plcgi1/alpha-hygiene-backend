@@ -43,9 +43,9 @@ func PaymentCheckMiddleware(repo repository.Repository, log *logrus.Logger) gin.
 			c.Abort()
 			return
 		}
-
 		// Восстанавливаем тело запроса еще раз для обработчика
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
 		if request.GUID == "" {
 			logger.Debugf("No GUID provided, skipping payment check")
 			c.Set("has_valid_payment", false)
